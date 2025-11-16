@@ -1,0 +1,176 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+//
+// Enums
+//
+
+enum OrderStatus {
+  PENDING   // 注文受付（未決済 or 処理待ち）
+  PAID      // 決済完了
+  CANCELED  // キャンセル
+}
+
+enum ShipmentStatus {
+  READY      // 発送準備中（伝票発行待ち・梱包中など）
+  SHIPPED    // ヤマトに引き渡し済み
+  DELIVERED  // 配達完了
+  CANCELED
+}
+
+//
+// Models
+//
+
+model User {
+  id        String        @id @default(cuid())
+  lineId    String        @unique        // LINEユーザーID
+  name      String?
+  email     String?       @unique
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  addresses UserAddress[]
+  orders    Order[]
+}
+
+model UserAddress {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  label       String?  // 「自宅」「会社」など
+  postalCode  String
+  prefecture  String
+  city        String
+  townName    String
+  chome       String?
+  houseNumber String?
+  building    String?
+
+  isDefault   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model TaxRate {
+  id        Int      @id @default(autoincrement())
+  name      String   // "標準税率10%" など
+  rate      Decimal  // 10.0, 8.0 など（％）
+
+  validFrom DateTime
+  validTo   DateTime?
+
+  books     Book[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Book {
+  id           String    @id @default(cuid())
+  title        String
+  author       String
+  priceExTax   Int       // 税抜価格（円）
+  taxRate      TaxRate   @relation(fields: [taxRateId], references: [id])
+  taxRateId    Int
+
+  isbn         String?   @unique
+  coverImage   String?
+  inStock      Boolean   @default(true)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  orderItems   OrderItem[]
+}
+
+model Order {
+  id               String       @id @default(cuid())
+  user             User         @relation(fields: [userId], references: [id])
+  userId           String
+
+  status           OrderStatus  @default(PENDING)
+
+  // 金額（スナップショット）
+  subtotalExTax    Int          // 商品小計（税抜）
+  taxTotal         Int          // 商品分の消費税合計
+  shippingFeeExTax Int          @default(0) // 送料（税抜）
+  shippingTax      Int          @default(0) // 送料の消費税
+  totalAmount      Int          // 請求総額（税込）
+
+  // 配送先住所（スナップショット）
+  shipName         String
+  shipPostalCode   String
+  shipPrefecture   String
+  shipCity         String
+  shipTownName     String
+  shipChome        String?
+  shipHouseNumber  String?
+  shipBuilding     String?
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  items            OrderItem[]
+  shipments        Shipment[]
+
+  @@index([userId])
+  @@map("orders") // DB上のテーブル名は "orders" にしておく（ORDER予約語回避）
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId         String
+
+  book            Book     @relation(fields: [bookId], references: [id])
+  bookId          String
+
+  quantity        Int
+
+  // スナップショット（金額・税）
+  unitPriceExTax  Int      // 単価（税抜）
+  taxRate         Decimal  // この明細に適用した税率（10.0など）
+  taxAmount       Int      // この明細の税額合計
+  unitPriceIncTax Int      // 単価（税込）あっても便利
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([bookId])
+}
+
+model Shipment {
+  id               String          @id @default(cuid())
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId          String
+
+  carrier          String          // "YAMATO" 固定でもいいし将来拡張も可
+  trackingNumber   String?         // ヤマトの送り状番号
+
+  status           ShipmentStatus  @default(READY)
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+
+  // ヤマトから取ってきた生のステータスを保存したい場合用
+  externalRawStatus String?
+  lastSyncedAt      DateTime?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([orderId])
+}
