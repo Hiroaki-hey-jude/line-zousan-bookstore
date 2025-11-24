@@ -22,6 +22,7 @@ model UserAddress {
   id          String   @id @default(uuid())
   userId      String
   label       String?
+  recipientName String
   postalCode  String
   prefecture  String
   city        String
@@ -29,6 +30,7 @@ model UserAddress {
   chome       String?
   houseNumber String?
   building    String?
+  phone       String
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
