@@ -1,7 +1,23 @@
 // prisma/seed.ts
+import "dotenv/config";
 import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import { randomUUID } from "crypto";
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+const pool = new Pool({
+  connectionString: databaseUrl,
+});
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(pool),
+});
 
 async function main() {
   console.log("🌱 Seeding started...");
@@ -70,6 +86,7 @@ async function main() {
   // Book 登録
   await prisma.book.createMany({
     data: books.map((b) => ({
+      id: randomUUID(),
       ...b,
       taxRateId: standardTaxRate.id,
     })),
