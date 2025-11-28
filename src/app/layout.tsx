@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
 import { Header } from "@/components/Header";
+import { TRPCProvider } from "./trpc-provider";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -30,16 +31,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
 
       <body className="min-h-screen bg-gray-50">
-        {/* ヘッダー */}
-        <Header />
+        <TRPCProvider>
+          {/* ヘッダー */}
+          <Header />
 
-        {/* コンテンツ（下ナビの分だけ下に余白） */}
-        <main className="pb-16">{children}</main>
+          {/* コンテンツ（下ナビの分だけ下に余白） */}
+          <main className="pb-16">{children}</main>
 
-        {/* 下ナビ */}
-        <BottomNav />
+          {/* 下ナビ */}
+          <BottomNav />
+        </TRPCProvider>
       </body>
     </html>
   );
 }
-

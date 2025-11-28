@@ -983,6 +983,7 @@ export const UserAddressScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   label: 'label',
+  recipientName: 'recipientName',
   postalCode: 'postalCode',
   prefecture: 'prefecture',
   city: 'city',
@@ -990,6 +991,7 @@ export const UserAddressScalarFieldEnum = {
   chome: 'chome',
   houseNumber: 'houseNumber',
   building: 'building',
+  phone: 'phone',
   isDefault: 'isDefault',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
