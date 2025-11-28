@@ -1,6 +1,6 @@
 // server/api/routers/book.ts
 import { router, publicProcedure } from "../trpc";
-import { prisma } from "@/lib/prisma"; // tsconfig の paths で @ が有効な前提
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 export const bookRouter = router({

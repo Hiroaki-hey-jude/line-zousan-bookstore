@@ -1,23 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@/server/api/root";
+import { trpc } from "@/trpc/react";
 
-type Address = {
-  id: string;
-  label: string;
-  recipientName: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine1: string;
-  addressLine2: string;
-  phone: string;
-  isDefault: boolean;
+type RouterInputs = inferRouterInputs<AppRouter>;
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type Address = RouterOutputs["userAddress"]["list"][number];
+type AddressMutationInput = RouterInputs["userAddress"]["create"];
+
+type AddressForm = {
+  [K in keyof AddressMutationInput]-?: K extends "isDefault"
+    ? boolean
+    : string;
 };
-
-type AddressForm = Omit<Address, "id">;
-
-const initialAddresses: Address[] = [];
 
 const createEmptyForm = (): AddressForm => ({
   label: "",
@@ -25,8 +22,10 @@ const createEmptyForm = (): AddressForm => ({
   postalCode: "",
   prefecture: "",
   city: "",
-  addressLine1: "",
-  addressLine2: "",
+  townName: "",
+  chome: "",
+  houseNumber: "",
+  building: "",
   phone: "",
   isDefault: false,
 });
@@ -37,12 +36,47 @@ const requiredFields: Array<keyof AddressForm> = [
   "postalCode",
   "prefecture",
   "city",
-  "addressLine1",
+  "townName",
+  "houseNumber",
   "phone",
 ];
 
+const normalizeOptionalField = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const buildMutationPayload = (form: AddressForm): AddressMutationInput => ({
+  label: form.label.trim(),
+  recipientName: form.recipientName.trim(),
+  postalCode: form.postalCode.trim(),
+  prefecture: form.prefecture.trim(),
+  city: form.city.trim(),
+  townName: form.townName.trim(),
+  chome: normalizeOptionalField(form.chome),
+  houseNumber: form.houseNumber.trim(),
+  building: normalizeOptionalField(form.building),
+  phone: form.phone.trim(),
+  isDefault: form.isDefault,
+});
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export default function ProfilePage() {
-  const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
+  const utils = trpc.useUtils();
+  const addressesQuery = trpc.userAddress.list.useQuery();
+  const createMutation = trpc.userAddress.create.useMutation();
+  const updateMutation = trpc.userAddress.update.useMutation();
+  const deleteMutation = trpc.userAddress.remove.useMutation();
+  const setDefaultMutation = trpc.userAddress.setDefault.useMutation();
+
+  const addresses = addressesQuery.data ?? [];
+
   const [formData, setFormData] = useState<AddressForm>(createEmptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -53,15 +87,13 @@ export default function ProfilePage() {
     [addresses, editingId],
   );
 
-  const markDefault = (items: Address[], targetId: string) =>
-    items.map((address) => ({
-      ...address,
-      isDefault: address.id === targetId,
-    }));
-
   const resetForm = () => {
     setFormData(createEmptyForm());
     setEditingId(null);
+  };
+
+  const invalidateAddresses = async () => {
+    await utils.userAddress.list.invalidate();
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +107,7 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage(null);
     setErrorMessage(null);
@@ -90,48 +122,35 @@ export default function ProfilePage() {
       return;
     }
 
-    if (editingId) {
-      let updated = addresses.map((address) =>
-        address.id === editingId ? { ...address, ...formData } : address,
-      );
+    const payload = buildMutationPayload(formData);
 
-      if (formData.isDefault) {
-        updated = markDefault(updated, editingId);
-      } else if (updated.length > 0 && !updated.some((address) => address.isDefault)) {
-        updated = markDefault(updated, updated[0].id);
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, ...payload });
+        setStatusMessage("住所情報を更新しました。");
+      } else {
+        await createMutation.mutateAsync(payload);
+        setStatusMessage("新しい住所を登録しました。");
       }
 
-      setAddresses(updated);
-      setStatusMessage("住所情報を更新しました。");
-    } else {
-      const newId = `addr-${Date.now()}`;
-      const shouldBeDefault =
-        formData.isDefault || addresses.every((address) => !address.isDefault);
-      let updated = [
-        ...addresses,
-        { id: newId, ...formData, isDefault: shouldBeDefault },
-      ];
-
-      if (shouldBeDefault) {
-        updated = markDefault(updated, newId);
-      }
-
-      setAddresses(updated);
-      setStatusMessage("新しい住所を登録しました。");
+      await invalidateAddresses();
+      resetForm();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "住所の保存に失敗しました。"));
     }
-
-    resetForm();
   };
 
   const handleEdit = (address: Address) => {
     setFormData({
-      label: address.label,
+      label: address.label ?? "",
       recipientName: address.recipientName,
       postalCode: address.postalCode,
       prefecture: address.prefecture,
       city: address.city,
-      addressLine1: address.addressLine1,
-      addressLine2: address.addressLine2,
+      townName: address.townName,
+      chome: address.chome ?? "",
+      houseNumber: address.houseNumber ?? "",
+      building: address.building ?? "",
       phone: address.phone,
       isDefault: address.isDefault,
     });
@@ -140,35 +159,42 @@ export default function ProfilePage() {
     setErrorMessage(null);
   };
 
-  const handleDelete = (id: string) => {
-    setAddresses((prev) => {
-      const filtered = prev.filter((address) => address.id !== id);
-      if (filtered.length === 0) {
-        return filtered;
-      }
-      const hasDefault = filtered.some((address) => address.isDefault);
-      if (!hasDefault) {
-        return filtered.map((address, index) => ({
-          ...address,
-          isDefault: index === 0,
-        }));
-      }
-      return filtered;
-    });
+  const handleDelete = async (id: string) => {
+    setStatusMessage(null);
+    setErrorMessage(null);
 
-    if (editingId === id) {
-      resetForm();
+    try {
+      await deleteMutation.mutateAsync({ id });
+      await invalidateAddresses();
+      if (editingId === id) {
+        resetForm();
+      }
+      setStatusMessage("住所を削除しました。");
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "住所の削除に失敗しました。"));
     }
-
-    setStatusMessage("住所を削除しました。");
   };
 
-  const handleSetDefault = (id: string) => {
-    setAddresses((prev) => markDefault(prev, id));
-    setStatusMessage("既定の住所を更新しました。");
+  const handleSetDefault = async (id: string) => {
+    setStatusMessage(null);
+    setErrorMessage(null);
+    try {
+      await setDefaultMutation.mutateAsync({ id });
+      await invalidateAddresses();
+      setStatusMessage("既定の住所を更新しました。");
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "既定の住所の設定に失敗しました。"));
+    }
   };
 
   const isEditing = Boolean(editingId);
+  const isLoadingAddresses = addressesQuery.isLoading;
+  const addressCount = addresses.length;
+  const isMutating =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending ||
+    setDefaultMutation.isPending;
 
   return (
     <div className="min-h-screen space-y-4 bg-gray-50 p-4">
@@ -186,10 +212,16 @@ export default function ProfilePage() {
             <h2 className="text-base font-semibold text-gray-900">登録済みの住所</h2>
             <p className="text-xs text-gray-500">タップで編集や既定の切り替えが可能です。</p>
           </div>
-          <span className="text-xs text-gray-500">{addresses.length} 件</span>
+          <span className="text-xs text-gray-500">{addressCount} 件</span>
         </header>
 
-        {addresses.length === 0 ? (
+        {isLoadingAddresses ? (
+          <p className="text-sm text-gray-500">住所を読み込み中です…</p>
+        ) : addressesQuery.error ? (
+          <p className="text-sm text-red-600">
+            住所の取得に失敗しました：{addressesQuery.error.message}
+          </p>
+        ) : addressCount === 0 ? (
           <p className="text-sm text-gray-500">まだ住所が登録されていません。</p>
         ) : (
           <ul className="space-y-3">
@@ -201,7 +233,7 @@ export default function ProfilePage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {address.label}
+                      {address.label ?? "配送先"}
                     </p>
                     <p className="text-xs text-gray-500">{address.recipientName}</p>
                   </div>
@@ -217,9 +249,11 @@ export default function ProfilePage() {
                   <p>
                     {address.prefecture}
                     {address.city}
-                    {address.addressLine1}
+                    {address.townName}
+                    {address.chome ?? ""}
+                    {address.houseNumber ?? ""}
                   </p>
-                  {address.addressLine2 && <p>{address.addressLine2}</p>}
+                  {address.building && <p>{address.building}</p>}
                   <p className="mt-1 text-xs text-gray-500">TEL: {address.phone}</p>
                 </div>
 
@@ -227,7 +261,8 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => handleEdit(address)}
-                    className="rounded-lg border border-gray-300 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-50"
+                    className="rounded-lg border border-gray-300 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    disabled={isMutating}
                   >
                     編集
                   </button>
@@ -235,7 +270,8 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => handleSetDefault(address.id)}
-                      className="rounded-lg border border-green-600 px-3 py-1 font-semibold text-green-600 hover:bg-green-50"
+                      className="rounded-lg border border-green-600 px-3 py-1 font-semibold text-green-600 hover:bg-green-50 disabled:opacity-60"
+                      disabled={isMutating}
                     >
                       既定にする
                     </button>
@@ -243,7 +279,8 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(address.id)}
-                    className="rounded-lg border border-red-500 px-3 py-1 font-semibold text-red-500 hover:bg-red-50"
+                    className="rounded-lg border border-red-500 px-3 py-1 font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60"
+                    disabled={isMutating}
                   >
                     削除
                   </button>
@@ -355,7 +392,57 @@ export default function ProfilePage() {
                 value={formData.city}
                 onChange={handleInputChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                placeholder="渋谷区神宮前"
+                placeholder="渋谷区"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <label
+                className="text-xs font-medium text-gray-700"
+                htmlFor="townName"
+              >
+                町名<span className="ml-1 text-red-500">*</span>
+              </label>
+              <input
+                id="townName"
+                name="townName"
+                value={formData.townName}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                placeholder="神宮前"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700" htmlFor="chome">
+                丁目（任意）
+              </label>
+              <input
+                id="chome"
+                name="chome"
+                value={formData.chome}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                placeholder="1丁目"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label
+                className="text-xs font-medium text-gray-700"
+                htmlFor="houseNumber"
+              >
+                番地・番号<span className="ml-1 text-red-500">*</span>
+              </label>
+              <input
+                id="houseNumber"
+                name="houseNumber"
+                value={formData.houseNumber}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                placeholder="1-2-3"
               />
             </div>
           </div>
@@ -363,31 +450,14 @@ export default function ProfilePage() {
           <div className="space-y-1">
             <label
               className="text-xs font-medium text-gray-700"
-              htmlFor="addressLine1"
-            >
-              番地・番号<span className="ml-1 text-red-500">*</span>
-            </label>
-            <input
-              id="addressLine1"
-              name="addressLine1"
-              value={formData.addressLine1}
-              onChange={handleInputChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-              placeholder="1-2-3"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label
-              className="text-xs font-medium text-gray-700"
-              htmlFor="addressLine2"
+              htmlFor="building"
             >
               建物名・部屋番号（任意）
             </label>
             <input
-              id="addressLine2"
-              name="addressLine2"
-              value={formData.addressLine2}
+              id="building"
+              name="building"
+              value={formData.building}
               onChange={handleInputChange}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
               placeholder="サンプルマンション 101"
@@ -424,13 +494,15 @@ export default function ProfilePage() {
             <button
               type="submit"
               className="flex-1 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-500 disabled:bg-gray-200 sm:flex-none"
+              disabled={isMutating}
             >
               {isEditing ? "住所を更新" : "住所を登録"}
             </button>
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              disabled={isMutating}
             >
               {isEditing ? "編集をキャンセル" : "入力をクリア"}
             </button>

@@ -1,13 +1,25 @@
 // server/api/trpc.ts
 import { initTRPC } from "@trpc/server";
 import { ZodError } from "zod";
+import { prisma } from "@/lib/prisma";
 
 /**
  * コンテキスト（認証情報とかを入れたいときに使う）
  * 今は何もないので空オブジェクトを返す
  */
 export async function createTRPCContext() {
-  return {};
+  // 認証なし環境なので、常に同じデモユーザーを利用する
+  const user = await prisma.user.upsert({
+    where: { lineId: "demo-line-user" },
+    update: {},
+    create: {
+      lineId: "demo-line-user",
+      name: "像倉 花子",
+      email: "demo@example.com",
+    },
+  });
+
+  return { userId: user.id };
 }
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
