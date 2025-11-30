@@ -58,6 +58,7 @@ model Book {
   taxRateId  Int
   isbn       String?     @unique
   coverImage String?
+  description String?
   inStock    Boolean     @default(true)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt

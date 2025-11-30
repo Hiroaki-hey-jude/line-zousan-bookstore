@@ -130,6 +130,7 @@ export const BookScalarFieldEnum = {
   taxRateId: 'taxRateId',
   isbn: 'isbn',
   coverImage: 'coverImage',
+  description: 'description',
   inStock: 'inStock',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
