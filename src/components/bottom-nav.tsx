@@ -6,8 +6,8 @@ import { cn } from "@/lib/cn";
 
 const tabs = [
   { href: "/", label: "ホーム", icon: "home" },
-  { href: "/profile", label: "プロフィール", icon: "person" },
   { href: "/cart", label: "カート", icon: "shopping_cart" },
+  { href: "/profile", label: "プロフィール", icon: "person" },
 ];
 
 export function BottomNav() {

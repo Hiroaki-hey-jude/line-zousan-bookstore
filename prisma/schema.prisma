@@ -85,6 +85,8 @@ model Order {
   shipChome        String?
   shipHouseNumber  String?
   shipBuilding     String?
+  stripeSessionId String? @unique
+  paymentIntentId String? @unique
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   items            OrderItem[]
