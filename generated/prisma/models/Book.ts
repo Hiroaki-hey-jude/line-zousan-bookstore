@@ -44,6 +44,7 @@ export type BookMinAggregateOutputType = {
   taxRateId: number | null
   isbn: string | null
   coverImage: string | null
+  description: string | null
   inStock: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -57,6 +58,7 @@ export type BookMaxAggregateOutputType = {
   taxRateId: number | null
   isbn: string | null
   coverImage: string | null
+  description: string | null
   inStock: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -70,6 +72,7 @@ export type BookCountAggregateOutputType = {
   taxRateId: number
   isbn: number
   coverImage: number
+  description: number
   inStock: number
   createdAt: number
   updatedAt: number
@@ -95,6 +98,7 @@ export type BookMinAggregateInputType = {
   taxRateId?: true
   isbn?: true
   coverImage?: true
+  description?: true
   inStock?: true
   createdAt?: true
   updatedAt?: true
@@ -108,6 +112,7 @@ export type BookMaxAggregateInputType = {
   taxRateId?: true
   isbn?: true
   coverImage?: true
+  description?: true
   inStock?: true
   createdAt?: true
   updatedAt?: true
@@ -121,6 +126,7 @@ export type BookCountAggregateInputType = {
   taxRateId?: true
   isbn?: true
   coverImage?: true
+  description?: true
   inStock?: true
   createdAt?: true
   updatedAt?: true
@@ -221,6 +227,7 @@ export type BookGroupByOutputType = {
   taxRateId: number
   isbn: string | null
   coverImage: string | null
+  description: string | null
   inStock: boolean
   createdAt: Date
   updatedAt: Date
@@ -257,6 +264,7 @@ export type BookWhereInput = {
   taxRateId?: Prisma.IntFilter<"Book"> | number
   isbn?: Prisma.StringNullableFilter<"Book"> | string | null
   coverImage?: Prisma.StringNullableFilter<"Book"> | string | null
+  description?: Prisma.StringNullableFilter<"Book"> | string | null
   inStock?: Prisma.BoolFilter<"Book"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Book"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Book"> | Date | string
@@ -272,6 +280,7 @@ export type BookOrderByWithRelationInput = {
   taxRateId?: Prisma.SortOrder
   isbn?: Prisma.SortOrderInput | Prisma.SortOrder
   coverImage?: Prisma.SortOrderInput | Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   inStock?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -290,6 +299,7 @@ export type BookWhereUniqueInput = Prisma.AtLeast<{
   priceExTax?: Prisma.IntFilter<"Book"> | number
   taxRateId?: Prisma.IntFilter<"Book"> | number
   coverImage?: Prisma.StringNullableFilter<"Book"> | string | null
+  description?: Prisma.StringNullableFilter<"Book"> | string | null
   inStock?: Prisma.BoolFilter<"Book"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Book"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Book"> | Date | string
@@ -305,6 +315,7 @@ export type BookOrderByWithAggregationInput = {
   taxRateId?: Prisma.SortOrder
   isbn?: Prisma.SortOrderInput | Prisma.SortOrder
   coverImage?: Prisma.SortOrderInput | Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   inStock?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -326,6 +337,7 @@ export type BookScalarWhereWithAggregatesInput = {
   taxRateId?: Prisma.IntWithAggregatesFilter<"Book"> | number
   isbn?: Prisma.StringNullableWithAggregatesFilter<"Book"> | string | null
   coverImage?: Prisma.StringNullableWithAggregatesFilter<"Book"> | string | null
+  description?: Prisma.StringNullableWithAggregatesFilter<"Book"> | string | null
   inStock?: Prisma.BoolWithAggregatesFilter<"Book"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Book"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Book"> | Date | string
@@ -338,6 +350,7 @@ export type BookCreateInput = {
   priceExTax: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -353,6 +366,7 @@ export type BookUncheckedCreateInput = {
   taxRateId: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -366,6 +380,7 @@ export type BookUpdateInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -381,6 +396,7 @@ export type BookUncheckedUpdateInput = {
   taxRateId?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -395,6 +411,7 @@ export type BookCreateManyInput = {
   taxRateId: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -407,6 +424,7 @@ export type BookUpdateManyMutationInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -420,6 +438,7 @@ export type BookUncheckedUpdateManyInput = {
   taxRateId?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -443,6 +462,7 @@ export type BookCountOrderByAggregateInput = {
   taxRateId?: Prisma.SortOrder
   isbn?: Prisma.SortOrder
   coverImage?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   inStock?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -461,6 +481,7 @@ export type BookMaxOrderByAggregateInput = {
   taxRateId?: Prisma.SortOrder
   isbn?: Prisma.SortOrder
   coverImage?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   inStock?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -474,6 +495,7 @@ export type BookMinOrderByAggregateInput = {
   taxRateId?: Prisma.SortOrder
   isbn?: Prisma.SortOrder
   coverImage?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   inStock?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -552,6 +574,7 @@ export type BookCreateWithoutTaxRateInput = {
   priceExTax: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -565,6 +588,7 @@ export type BookUncheckedCreateWithoutTaxRateInput = {
   priceExTax: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -608,6 +632,7 @@ export type BookScalarWhereInput = {
   taxRateId?: Prisma.IntFilter<"Book"> | number
   isbn?: Prisma.StringNullableFilter<"Book"> | string | null
   coverImage?: Prisma.StringNullableFilter<"Book"> | string | null
+  description?: Prisma.StringNullableFilter<"Book"> | string | null
   inStock?: Prisma.BoolFilter<"Book"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Book"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Book"> | Date | string
@@ -620,6 +645,7 @@ export type BookCreateWithoutOrderItemsInput = {
   priceExTax: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -634,6 +660,7 @@ export type BookUncheckedCreateWithoutOrderItemsInput = {
   taxRateId: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -662,6 +689,7 @@ export type BookUpdateWithoutOrderItemsInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -676,6 +704,7 @@ export type BookUncheckedUpdateWithoutOrderItemsInput = {
   taxRateId?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -688,6 +717,7 @@ export type BookCreateManyTaxRateInput = {
   priceExTax: number
   isbn?: string | null
   coverImage?: string | null
+  description?: string | null
   inStock?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -700,6 +730,7 @@ export type BookUpdateWithoutTaxRateInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -713,6 +744,7 @@ export type BookUncheckedUpdateWithoutTaxRateInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -726,6 +758,7 @@ export type BookUncheckedUpdateManyWithoutTaxRateInput = {
   priceExTax?: Prisma.IntFieldUpdateOperationsInput | number
   isbn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   coverImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -770,6 +803,7 @@ export type BookSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   taxRateId?: boolean
   isbn?: boolean
   coverImage?: boolean
+  description?: boolean
   inStock?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -786,6 +820,7 @@ export type BookSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   taxRateId?: boolean
   isbn?: boolean
   coverImage?: boolean
+  description?: boolean
   inStock?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -800,6 +835,7 @@ export type BookSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   taxRateId?: boolean
   isbn?: boolean
   coverImage?: boolean
+  description?: boolean
   inStock?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -814,12 +850,13 @@ export type BookSelectScalar = {
   taxRateId?: boolean
   isbn?: boolean
   coverImage?: boolean
+  description?: boolean
   inStock?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type BookOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "author" | "priceExTax" | "taxRateId" | "isbn" | "coverImage" | "inStock" | "createdAt" | "updatedAt", ExtArgs["result"]["book"]>
+export type BookOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "author" | "priceExTax" | "taxRateId" | "isbn" | "coverImage" | "description" | "inStock" | "createdAt" | "updatedAt", ExtArgs["result"]["book"]>
 export type BookInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   taxRate?: boolean | Prisma.TaxRateDefaultArgs<ExtArgs>
   orderItems?: boolean | Prisma.Book$orderItemsArgs<ExtArgs>
@@ -846,6 +883,7 @@ export type $BookPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     taxRateId: number
     isbn: string | null
     coverImage: string | null
+    description: string | null
     inStock: boolean
     createdAt: Date
     updatedAt: Date
@@ -1281,6 +1319,7 @@ export interface BookFieldRefs {
   readonly taxRateId: Prisma.FieldRef<"Book", 'Int'>
   readonly isbn: Prisma.FieldRef<"Book", 'String'>
   readonly coverImage: Prisma.FieldRef<"Book", 'String'>
+  readonly description: Prisma.FieldRef<"Book", 'String'>
   readonly inStock: Prisma.FieldRef<"Book", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Book", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Book", 'DateTime'>
