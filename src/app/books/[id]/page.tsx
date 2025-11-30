@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { BookDescription } from "@/components/BookDescription";
+import { AddToCartButton } from "@/components/AddToCartButton";
 
 const TAX_RATE = 1.1;
 
@@ -93,13 +94,13 @@ export default async function BookDetailPage({
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
+                <AddToCartButton
+                  bookId={book.id}
                   className="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-4 py-3 text-sm font-semibold text-black shadow-sm transition hover:bg-yellow-500 disabled:bg-gray-300"
                   disabled={!book.inStock}
                 >
                   🛒 カートに入れる
-                </button>
+                </AddToCartButton>
                 <button
                   type="button"
                   className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-black disabled:bg-gray-400"

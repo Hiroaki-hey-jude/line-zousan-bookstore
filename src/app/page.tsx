@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import { AddToCartButton } from "@/components/AddToCartButton";
 
 export default async function HomePage() {
   const books = await prisma.book.findMany({
@@ -69,13 +70,13 @@ export default async function HomePage() {
               </Link>
 
               <div className="border-t px-3 pb-3">
-                <button
-                  type="button"
+                <AddToCartButton
+                  bookId={book.id}
                   className="mt-3 inline-flex w-full items-center justify-center rounded bg-yellow-400 px-3 py-2 text-xs font-semibold text-black transition hover:bg-yellow-500 disabled:bg-gray-300"
                   disabled={!book.inStock}
                 >
                   🛒 カートに入れる
-                </button>
+                </AddToCartButton>
               </div>
             </li>
           );
