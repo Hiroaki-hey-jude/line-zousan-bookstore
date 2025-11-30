@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
  * 今は何もないので空オブジェクトを返す
  */
 export async function createTRPCContext({ req }: { req: Request }) {
+  void req;
   // デモユーザーを返す
   const user = await prisma.user.upsert({
     where: { lineId: "demo-line-user" },
