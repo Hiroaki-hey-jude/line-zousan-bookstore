@@ -1,6 +1,6 @@
 // server/api/routers/address.ts
 import { TRPCError } from "@trpc/server";
-import type { Prisma } from "../../../../generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 import { router, publicProcedure } from "../trpc";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";

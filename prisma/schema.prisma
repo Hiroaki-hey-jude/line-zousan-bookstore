@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -16,6 +15,7 @@ model User {
   updatedAt DateTime      @updatedAt
   addresses UserAddress[]
   orders    Order[]
+  cartItems CartItem[]
 }
 
 model UserAddress {
@@ -64,6 +64,7 @@ model Book {
   updatedAt  DateTime    @updatedAt
   taxRate    TaxRate     @relation(fields: [taxRateId], references: [id])
   orderItems OrderItem[]
+  cartItems  CartItem[]
 }
 
 model Order {
@@ -126,6 +127,22 @@ model Shipment {
   order             Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  bookId    String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@map("cart_items")
 }
 
 enum OrderStatus {
