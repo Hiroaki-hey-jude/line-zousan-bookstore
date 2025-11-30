@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
  * コンテキスト（認証情報とかを入れたいときに使う）
  * 今は何もないので空オブジェクトを返す
  */
-export async function createTRPCContext() {
-  // 認証なし環境なので、常に同じデモユーザーを利用する
+export async function createTRPCContext({ req }: { req: Request }) {
+  // デモユーザーを返す
   const user = await prisma.user.upsert({
     where: { lineId: "demo-line-user" },
     update: {},
