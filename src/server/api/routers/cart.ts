@@ -25,6 +25,10 @@ export const cartRouter = router({
     .mutation(async ({ ctx, input }) => {
       const book = await prisma.book.findUnique({ where: { id: input.bookId } });
 
+      console.log("🧪 cart.add ctx.userId:", ctx.userId, typeof ctx.userId);
+      console.log("🧪 cart.add input.bookId:", input.bookId);
+
+
       if (!book) {
         throw new TRPCError({ code: "NOT_FOUND", message: "本が見つかりません。" });
       }

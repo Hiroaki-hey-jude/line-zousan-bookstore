@@ -21,6 +21,9 @@ export function AddToCartButton({
     onSuccess: async () => {
       await utils.cart.list.invalidate();
     },
+    onError: () => {
+      alert("カートに追加できませんでした");
+    },
   });
 
   const isBusy = addMutation.isPending;

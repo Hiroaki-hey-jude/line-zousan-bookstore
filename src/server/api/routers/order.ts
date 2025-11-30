@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "../../../../generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { publicProcedure, router } from "../trpc";
 
@@ -119,7 +119,7 @@ export const orderRouter = router({
         let subtotalExTax = 0;
         let taxTotal = 0;
 
-        const orderItems = input.items.map((item) => {
+        const orderItems: Prisma.OrderItemCreateManyOrderInput[] = input.items.map((item) => {
           const book = bookMap.get(item.bookId);
           if (!book) {
             throw new TRPCError({
@@ -151,7 +151,7 @@ export const orderRouter = router({
             taxRate,
             taxAmount: unitTax,
             unitPriceIncTax: unitPriceExTax + unitTax,
-          } satisfies Prisma.OrderItemCreateWithoutOrderInput;
+          };
         });
 
         const shippingTax = Math.round(

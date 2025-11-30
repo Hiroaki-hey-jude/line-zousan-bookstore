@@ -2,19 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
-import type { Prisma } from "@/generated/prisma/client";
+import { Trash2 } from "lucide-react";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@/server/api/root";
 import { trpc } from "@/trpc/react";
 
-type CartItemWithBook = Prisma.CartItemGetPayload<{
-  include: { book: { include: { taxRate: true } } };
-}>;
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type CartItemWithBook = RouterOutputs["cart"]["list"][number];
 
 const calcUnitPriceIncTax = (item: CartItemWithBook) => {
   const taxRate = Number(item.book.taxRate?.rate ?? 0);
+  console.log(taxRate, 'taxRate')
   const unitTax = Math.round(item.book.priceExTax * taxRate);
   return item.book.priceExTax + unitTax;
 };
+
+console.log(calcUnitPriceIncTax, 'calcUnitPriceIncTax')
 
 const useCartList = () => {
   const listQuery = trpc.cart.list.useQuery();
@@ -57,10 +60,9 @@ export default function CartPage() {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold">カート</h1>
-        <p className="text-sm text-gray-600">購入予定の商品を確認できます。</p>
+        <h1 className="text-lg font-semibold text-black">カート</h1>
       </div>
 
       {listQuery.isLoading && (
@@ -118,11 +120,11 @@ export default function CartPage() {
                         </div>
                         <button
                           type="button"
-                          className="text-sm text-red-600 hover:text-red-700"
+                          className="flex h-7 w-7 items-center justify-center rounded-full 
+                                    border border-gray-300 bg-white hover:bg-gray-100 transition"
                           onClick={() => handleRemove(item)}
-                          disabled={removeItem.isPending}
                         >
-                          削除
+                          <Trash2 className="h-4 w-4 text-black" strokeWidth={2.1} />
                         </button>
                       </div>
 
@@ -138,16 +140,22 @@ export default function CartPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="h-8 w-8 rounded border bg-white text-lg font-semibold disabled:opacity-50"
+                            className="h-8 w-8 rounded border border-gray-400 bg-white text-xl font-bold disabled:opacity-50 
+                                      hover:bg-gray-50 transition"
                             onClick={() => handleChangeQuantity(item, item.quantity - 1)}
                             disabled={item.quantity <= 1 || updateQuantity.isPending}
                           >
                             -
                           </button>
-                          <span className="w-10 text-center text-sm font-semibold">{item.quantity}</span>
+
+                          <span className="text-center text-base font-extrabold text-gray-900">
+                            {item.quantity}
+                          </span>
+
                           <button
                             type="button"
-                            className="h-8 w-8 rounded border bg-white text-lg font-semibold disabled:opacity-50"
+                            className="h-8 w-8 rounded border border-gray-400 bg-white text-xl font-bold disabled:opacity-50
+                                      hover:bg-gray-50 transition"
                             onClick={() => handleChangeQuantity(item, item.quantity + 1)}
                             disabled={item.quantity >= 99 || updateQuantity.isPending}
                           >
@@ -155,7 +163,6 @@ export default function CartPage() {
                           </button>
                         </div>
                       </div>
-
                       <div className="text-right text-sm font-semibold text-gray-900">
                         小計: ¥{lineTotal.toLocaleString()}
                       </div>
@@ -171,10 +178,10 @@ export default function CartPage() {
               <span className="text-gray-700">合計</span>
               <span className="text-lg font-bold text-gray-900">¥{subtotal.toLocaleString()}</span>
             </div>
-            <p className="mt-2 text-xs text-gray-500">送料・手数料は次のステップで計算されます。</p>
+            <p className="mt-2 text-xs text-gray-500">送料は次のステップで計算されます。</p>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
