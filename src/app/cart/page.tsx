@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/api/root";
 import { trpc } from "@/trpc/react";
@@ -12,12 +13,9 @@ type CartItemWithBook = RouterOutputs["cart"]["list"][number];
 
 const calcUnitPriceIncTax = (item: CartItemWithBook) => {
   const taxRate = Number(item.book.taxRate?.rate ?? 0);
-  console.log(taxRate, 'taxRate')
   const unitTax = Math.round(item.book.priceExTax * taxRate);
   return item.book.priceExTax + unitTax;
 };
-
-console.log(calcUnitPriceIncTax, 'calcUnitPriceIncTax')
 
 const useCartList = () => {
   const listQuery = trpc.cart.list.useQuery();
@@ -44,11 +42,46 @@ const useCartList = () => {
 export default function CartPage() {
   const { listQuery, updateQuantity, removeItem } = useCartList();
   const items = listQuery.data ?? [];
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const subtotal = items.reduce((sum, item) => {
     const unit = calcUnitPriceIncTax(item);
     return sum + unit * item.quantity;
   }, 0);
+
+  const handleCheckout = async () => {
+    if (items.length === 0) return;
+
+    setCheckoutError(null);
+    setIsCheckingOut(true);
+
+    try {
+      const response = await fetch("/api/checkout/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            bookId: item.bookId,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const payload = (await response.json()) as { url?: string; error?: string };
+
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error ?? "チェックアウトの開始に失敗しました。");
+      }
+
+      window.location.href = payload.url;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラーが発生しました。";
+      setCheckoutError(message);
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
 
   const handleChangeQuantity = (item: CartItemWithBook, quantity: number) => {
     if (quantity < 0 || quantity > 99) return;
@@ -179,6 +212,17 @@ export default function CartPage() {
               <span className="text-lg font-bold text-gray-900">¥{subtotal.toLocaleString()}</span>
             </div>
             <p className="mt-2 text-xs text-gray-500">送料は次のステップで計算されます。</p>
+            {checkoutError && (
+              <p className="mt-2 text-sm text-red-600">{checkoutError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleCheckout}
+              disabled={isCheckingOut || items.length === 0}
+              className="mt-4 inline-flex w-full items-center justify-center rounded bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-900 disabled:opacity-50"
+            >
+              {isCheckingOut ? "リダイレクト中..." : "Stripe Checkout へ進む"}
+            </button>
           </div>
         </div>
       )}

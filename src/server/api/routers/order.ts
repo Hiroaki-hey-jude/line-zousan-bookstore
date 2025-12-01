@@ -105,6 +105,27 @@ export const orderRouter = router({
       return order;
     }),
 
+  byStripeSession: publicProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const order = await prisma.order.findFirst({
+        where: { stripeSessionId: input.sessionId, userId: ctx.userId },
+        include: {
+          items: { include: { book: true } },
+          shipments: true,
+        },
+      });
+
+      if (!order) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "注文が見つかりません。",
+        });
+      }
+
+      return order;
+    }),
+
   create: publicProcedure
     .input(orderCreateInput)
     .mutation(async ({ ctx, input }) => {

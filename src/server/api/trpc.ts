@@ -1,7 +1,7 @@
 // server/api/trpc.ts
 import { initTRPC } from "@trpc/server";
 import { ZodError } from "zod";
-import { prisma } from "@/lib/prisma";
+import { ensureDemoUser } from "@/server/auth/demo-user";
 
 /**
  * コンテキスト（認証情報とかを入れたいときに使う）
@@ -10,15 +10,7 @@ import { prisma } from "@/lib/prisma";
 export async function createTRPCContext({ req }: { req: Request }) {
   void req;
   // デモユーザーを返す
-  const user = await prisma.user.upsert({
-    where: { lineId: "demo-line-user" },
-    update: {},
-    create: {
-      lineId: "demo-line-user",
-      name: "像倉 花子",
-      email: "demo@example.com",
-    },
-  });
+  const user = await ensureDemoUser();
 
   return { userId: user.id };
 }

@@ -116,4 +116,8 @@ export const cartRouter = router({
 
       return existing;
     }),
+
+  clear: publicProcedure.mutation(async ({ ctx }) => {
+    await prisma.cartItem.deleteMany({ where: { userId: ctx.userId } });
+  }),
 });
