@@ -28,7 +28,7 @@ async function main() {
   const standardTaxRate = await prisma.taxRate.create({
     data: {
       name: "標準税率10%",
-      rate: new Prisma.Decimal(10),
+      rate: new Prisma.Decimal(0.1),
       validFrom: new Date("2019-10-01"),
     },
   });
@@ -136,8 +136,8 @@ async function main() {
 
   const orderItemsData = targetBooks.map((book) => {
     const unitPriceExTax = book.priceExTax;
-    const taxRate = new Prisma.Decimal(10);
-    const taxAmount = Math.floor(unitPriceExTax * 0.1);
+    const taxRate = new Prisma.Decimal(0.1);
+    const taxAmount = Math.floor(unitPriceExTax * taxRate.toNumber());
     const unitPriceIncTax = unitPriceExTax + taxAmount;
 
     return {
@@ -202,4 +202,3 @@ main()
     process.exit(1);
   })
   .finally(async () => prisma.$disconnect());
-

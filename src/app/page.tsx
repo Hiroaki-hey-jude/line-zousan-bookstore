@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { BuyNowButton } from "@/components/BuyNowButton";
 
 export default async function HomePage() {
   const books = await prisma.book.findMany({
@@ -77,6 +78,15 @@ export default async function HomePage() {
                 >
                   🛒 カートに入れる
                 </AddToCartButton>
+                <BuyNowButton
+                  bookId={book.id}
+                  bookTitle={book.title}
+                  unitPriceIncTax={priceIncTax}
+                  disabled={!book.inStock}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-yellow-500 disabled:bg-gray-300"
+                >
+                  ⚡ 今すぐ買う
+                </BuyNowButton>
               </div>
             </li>
           );

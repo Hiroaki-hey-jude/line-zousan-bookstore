@@ -2,22 +2,33 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/api/root";
 import { trpc } from "@/trpc/react";
+import { CheckoutConfirmSheet } from "@/components/CheckoutConfirmSheet";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type CartItemWithBook = RouterOutputs["cart"]["list"][number];
+type Address = RouterOutputs["userAddress"]["list"][number];
 
 const calcUnitPriceIncTax = (item: CartItemWithBook) => {
   const taxRate = Number(item.book.taxRate?.rate ?? 0);
-  console.log(taxRate, 'taxRate')
   const unitTax = Math.round(item.book.priceExTax * taxRate);
   return item.book.priceExTax + unitTax;
 };
 
-console.log(calcUnitPriceIncTax, 'calcUnitPriceIncTax')
+const mapAddressToShipping = (address: Address) => ({
+  shipName: address.recipientName,
+  shipPostalCode: address.postalCode,
+  shipPrefecture: address.prefecture,
+  shipCity: address.city,
+  shipTownName: address.townName,
+  shipChome: address.chome ?? undefined,
+  shipHouseNumber: address.houseNumber ?? undefined,
+  shipBuilding: address.building ?? undefined,
+});
 
 const useCartList = () => {
   const listQuery = trpc.cart.list.useQuery();
@@ -44,11 +55,89 @@ const useCartList = () => {
 export default function CartPage() {
   const { listQuery, updateQuantity, removeItem } = useCartList();
   const items = listQuery.data ?? [];
+  const addressesQuery = trpc.userAddress.list.useQuery();
+  const addresses = useMemo(
+    () => addressesQuery.data ?? [],
+    [addressesQuery.data],
+  );
+  const createOrder = trpc.order.createOrder.useMutation();
+  const createSession = trpc.checkout.createSession.useMutation();
+
+  const defaultAddress = useMemo(() => {
+    return addresses.find((addr) => addr.isDefault) ?? addresses[0];
+  }, [addresses]);
+
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+
+  const selectedAddress =
+    addresses.find((addr) => addr.id === selectedAddressId) ??
+    defaultAddress ??
+    null;
+
+  const isCheckoutProcessing =
+    createOrder.isPending || createSession.isPending;
 
   const subtotal = items.reduce((sum, item) => {
     const unit = calcUnitPriceIncTax(item);
     return sum + unit * item.quantity;
   }, 0);
+  const checkoutItemsSummary = items.map((item) => ({
+    id: item.id,
+    title: item.book.title,
+    quantity: item.quantity,
+  }));
+
+  const handleCheckoutClick = () => {
+    if (items.length === 0) {
+      setCheckoutError("カートに商品がありません。");
+      return;
+    }
+
+    if (addressesQuery.isLoading) {
+      setCheckoutError("配送先を読み込み中です。少し待ってから再度お試しください。");
+      return;
+    }
+
+    if (addresses.length === 0) {
+      setCheckoutError("プロフィールから配送先を登録してください。");
+      return;
+    }
+
+    setCheckoutError(null);
+    if (!selectedAddressId && defaultAddress) {
+      setSelectedAddressId(defaultAddress.id);
+    }
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmCheckout = async () => {
+    if (!selectedAddress) {
+      setCheckoutError("配送先を選択してください。");
+      return;
+    }
+
+    try {
+      setCheckoutError(null);
+      const order = await createOrder.mutateAsync({
+        fromCart: true,
+        ...mapAddressToShipping(selectedAddress),
+      });
+
+      const session = await createSession.mutateAsync({
+        orderId: order.orderId,
+      });
+
+      window.location.href = session.url;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Stripe 決済の開始に失敗しました。";
+      setCheckoutError(message);
+    }
+  };
 
   const handleChangeQuantity = (item: CartItemWithBook, quantity: number) => {
     if (quantity < 0 || quantity > 99) return;
@@ -173,15 +262,105 @@ export default function CartPage() {
             })}
           </ul>
 
-          <div className="rounded-lg bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-700">合計</span>
-              <span className="text-lg font-bold text-gray-900">¥{subtotal.toLocaleString()}</span>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">合計</span>
+                <span className="text-lg font-bold text-gray-900">
+                  ¥{subtotal.toLocaleString()}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                送料は次のステップで計算されます。
+              </p>
             </div>
-            <p className="mt-2 text-xs text-gray-500">送料は次のステップで計算されます。</p>
+
+            <div className="rounded-lg bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    配送先と決済
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    既定の住所で Stripe Checkout を開始します。
+                  </p>
+                </div>
+                <Link
+                  href="/profile"
+                  className="text-xs font-semibold text-yellow-700 underline underline-offset-4"
+                >
+                  住所を編集
+                </Link>
+              </div>
+
+              <div className="mt-3 text-sm text-gray-700">
+                {addressesQuery.isLoading ? (
+                  <p>配送先を読み込み中です…</p>
+                ) : addressesQuery.error ? (
+                  <p className="text-red-600">
+                    配送先の取得に失敗しました：{addressesQuery.error.message}
+                  </p>
+                ) : defaultAddress ? (
+                  <div className="space-y-1">
+                    <p className="font-semibold">{defaultAddress.recipientName}</p>
+                    <p>〒 {defaultAddress.postalCode}</p>
+                    <p>
+                      {defaultAddress.prefecture}
+                      {defaultAddress.city}
+                      {defaultAddress.townName}
+                      {defaultAddress.chome ?? ""}
+                      {defaultAddress.houseNumber ?? ""}
+                    </p>
+                    {defaultAddress.building && <p>{defaultAddress.building}</p>}
+                  </div>
+                ) : (
+                  <p className="text-gray-600">
+                    配送先が登録されていません。プロフィールページから住所を登録してください。
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black disabled:bg-gray-400"
+                onClick={handleCheckoutClick}
+                disabled={
+                  isCheckoutProcessing ||
+                  addressesQuery.isLoading ||
+                  Boolean(addressesQuery.error) ||
+                  items.length === 0 ||
+                  addresses.length === 0
+                }
+              >
+                {isCheckoutProcessing ? "処理中..." : "購入手続きへ"}
+              </button>
+              {checkoutError && !isConfirmOpen && (
+                <p className="mt-2 text-xs text-red-600" aria-live="polite">
+                  {checkoutError}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      <CheckoutConfirmSheet
+        open={isConfirmOpen}
+        onClose={() => {
+          setIsConfirmOpen(false);
+          setCheckoutError(null);
+        }}
+        addresses={addresses}
+        selectedAddressId={selectedAddressId}
+        onSelectAddress={setSelectedAddressId}
+        summary={{
+          subtotal,
+          items: checkoutItemsSummary,
+        }}
+        isProcessing={isCheckoutProcessing}
+        onConfirm={handleConfirmCheckout}
+        errorMessage={checkoutError}
+      />
     </main>
   );
 }

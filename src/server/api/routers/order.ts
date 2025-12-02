@@ -1,86 +1,31 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { Prisma } from "../../../../generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { publicProcedure, router } from "../trpc";
+import { publicProcedure, router } from "@/server/api/trpc";
 
-const orderItemInput = z.object({
-  bookId: z.string(),
-  quantity: z.number().int().positive(),
+const shippingInput = z.object({
+  shipName: z.string(),
+  shipPostalCode: z.string(),
+  shipPrefecture: z.string(),
+  shipCity: z.string(),
+  shipTownName: z.string(),
+  shipChome: z.string().optional(),
+  shipHouseNumber: z.string().optional(),
+  shipBuilding: z.string().optional(),
 });
-
-const orderCreateInput = z.object({
-  items: z.array(orderItemInput).nonempty("注文商品を1つ以上追加してください。"),
-  shippingAddressId: z.string().optional(),
-  shippingFeeExTax: z.number().int().min(0).default(0),
-  shippingTaxRate: z.number().min(0).default(0.1),
-});
-
-const ensureAddress = async (
-  tx: Prisma.TransactionClient,
-  userId: string,
-  addressId?: string,
-) => {
-  if (addressId) {
-    const address = await tx.userAddress.findFirst({
-      where: { id: addressId, userId },
-    });
-
-    if (!address) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "配送先住所が見つかりません。",
-      });
-    }
-
-    return address;
-  }
-
-  const fallback = await tx.userAddress.findFirst({
-    where: { userId },
-    orderBy: [
-      { isDefault: "desc" },
-      { createdAt: "asc" },
-    ],
-  });
-
-  if (!fallback) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "配送先住所を登録してください。",
-    });
-  }
-
-  return fallback;
-};
-
-const fetchBooksWithTax = async (bookIds: string[]) => {
-  const books = await prisma.book.findMany({
-    where: { id: { in: bookIds } },
-    include: { taxRate: true },
-  });
-
-  if (books.length !== bookIds.length) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "存在しない本が含まれています。",
-    });
-  }
-
-  return books;
-};
 
 export const orderRouter = router({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: publicProcedure.query(({ ctx }) => {
     return prisma.order.findMany({
       where: { userId: ctx.userId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        items: {
-          include: { book: true },
-        },
+      select: {
+        id: true,
+        createdAt: true,
+        totalAmount: true,
+        status: true,
       },
+      orderBy: { createdAt: "desc" },
     });
   }),
 
@@ -90,106 +35,198 @@ export const orderRouter = router({
       const order = await prisma.order.findFirst({
         where: { id: input.id, userId: ctx.userId },
         include: {
-          items: { include: { book: true } },
-          shipments: true,
+          items: {
+            include: {
+              book: {
+                select: {
+                  id: true,
+                  title: true,
+                  coverImage: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+          shipments: {
+            orderBy: [{ createdAt: "asc" }],
+          },
         },
       });
 
       if (!order) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "注文が見つかりません。",
+          message: "注文が見つかりませんでした。",
         });
       }
 
       return order;
     }),
 
-  create: publicProcedure
-    .input(orderCreateInput)
+  createOrder: publicProcedure
+    .input(
+      z.union([
+        z
+          .object({
+            fromCart: z.literal(true),
+          })
+          .and(shippingInput),
+        z
+          .object({
+            fromCart: z.literal(false),
+            bookId: z.string(),
+            quantity: z.number().int().positive(),
+          })
+          .and(shippingInput),
+      ]),
+    )
     .mutation(async ({ ctx, input }) => {
-      const bookIds = input.items.map((item) => item.bookId);
+      const userId = ctx.userId;
+      if (!userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
 
-      return prisma.$transaction(async (tx) => {
-        const address = await ensureAddress(tx, ctx.userId, input.shippingAddressId);
-        const books = await fetchBooksWithTax(bookIds);
+      let items: {
+        bookId: string;
+        quantity: number;
+        ex: number;
+        rate: number;
+        tax: number;
+        inc: number;
+      }[] = [];
 
-        const bookMap = new Map(books.map((book) => [book.id, book]));
-
-        let subtotalExTax = 0;
-        let taxTotal = 0;
-
-        const orderItems: Prisma.OrderItemCreateManyOrderInput[] = input.items.map((item) => {
-          const book = bookMap.get(item.bookId);
-          if (!book) {
-            throw new TRPCError({
-              code: "NOT_FOUND",
-              message: "存在しない本が含まれています。",
-            });
-          }
-
-          if (!book.inStock) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `${book.title} は在庫切れです。`,
-            });
-          }
-
-          const taxRate = Number(book.taxRate.rate);
-          const unitPriceExTax = book.priceExTax;
-          const unitTax = Math.round(unitPriceExTax * taxRate);
-          const lineTax = unitTax * item.quantity;
-          const lineSubtotal = unitPriceExTax * item.quantity;
-
-          subtotalExTax += lineSubtotal;
-          taxTotal += lineTax;
-
-          return {
-            bookId: book.id,
-            quantity: item.quantity,
-            unitPriceExTax,
-            taxRate,
-            taxAmount: unitTax,
-            unitPriceIncTax: unitPriceExTax + unitTax,
-          };
+      if (input.fromCart) {
+        const cartItems = await prisma.cartItem.findMany({
+          where: { userId },
+          include: { book: { include: { taxRate: true } } },
         });
 
-        const shippingTax = Math.round(
-          input.shippingFeeExTax * input.shippingTaxRate,
-        );
+        if (cartItems.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "カートが空です。",
+          });
+        }
 
-        const totalAmount =
-          subtotalExTax + taxTotal + input.shippingFeeExTax + shippingTax;
+        const unavailable = cartItems.find((c) => !c.book.inStock);
+        if (unavailable) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "在庫切れの商品がカートに含まれています。",
+          });
+        }
 
-        const order = await tx.order.create({
+        items = cartItems.map((c) => {
+          const rate = Number(c.book.taxRate?.rate ?? 0);
+          const taxAmount = Math.round(c.book.priceExTax * rate);
+          const inc = c.book.priceExTax + taxAmount;
+
+          return {
+            bookId: c.bookId,
+            quantity: c.quantity,
+            ex: c.book.priceExTax,
+            rate,
+            tax: taxAmount,
+            inc,
+          };
+        });
+      }
+
+      if (!input.fromCart) {
+        const book = await prisma.book.findUnique({
+          where: { id: input.bookId },
+          include: { taxRate: true },
+        });
+
+        if (!book) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "書籍が見つかりませんでした。",
+          });
+        }
+
+        if (!book.inStock) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "在庫切れのため購入できません。",
+          });
+        }
+
+        const rate = Number(book.taxRate?.rate ?? 0);
+        const taxAmount = Math.round(book.priceExTax * rate);
+        const inc = book.priceExTax + taxAmount;
+
+        items = [
+          {
+            bookId: input.bookId,
+            quantity: input.quantity,
+            ex: book.priceExTax,
+            rate,
+            tax: taxAmount,
+            inc,
+          },
+        ];
+      }
+
+      const subtotalExTax = items.reduce(
+        (acc, i) => acc + i.ex * i.quantity,
+        0,
+      );
+      const taxTotal = items.reduce(
+        (acc, i) => acc + i.tax * i.quantity,
+        0,
+      );
+      const shippingFeeExTax = 0;
+      const shippingTax = 0;
+
+      const totalAmount =
+        subtotalExTax + taxTotal + shippingFeeExTax + shippingTax;
+
+      const order = await prisma.$transaction(async (tx) => {
+        const createdOrder = await tx.order.create({
           data: {
-            userId: ctx.userId,
+            userId,
             status: "PENDING",
             subtotalExTax,
             taxTotal,
-            shippingFeeExTax: input.shippingFeeExTax,
+            shippingFeeExTax,
             shippingTax,
             totalAmount,
-            shipName: address.recipientName,
-            shipPostalCode: address.postalCode,
-            shipPrefecture: address.prefecture,
-            shipCity: address.city,
-            shipTownName: address.townName,
-            shipChome: address.chome,
-            shipHouseNumber: address.houseNumber,
-            shipBuilding: address.building,
-            items: {
-              createMany: {
-                data: orderItems,
-              },
-            },
-          },
-          include: {
-            items: true,
+            shipName: input.shipName,
+            shipPostalCode: input.shipPostalCode,
+            shipPrefecture: input.shipPrefecture,
+            shipCity: input.shipCity,
+            shipTownName: input.shipTownName,
+            shipChome: input.shipChome ?? null,
+            shipHouseNumber: input.shipHouseNumber ?? null,
+            shipBuilding: input.shipBuilding ?? null,
           },
         });
 
-        return order;
+        for (const i of items) {
+          await tx.orderItem.create({
+            data: {
+              orderId: createdOrder.id,
+              bookId: i.bookId,
+              quantity: i.quantity,
+              unitPriceExTax: i.ex,
+              taxRate: i.rate,
+              taxAmount: i.tax,
+              unitPriceIncTax: i.inc,
+            },
+          });
+        }
+
+        return createdOrder;
       });
+
+      if (input.fromCart) {
+        await prisma.cartItem.deleteMany({ where: { userId } });
+      }
+
+      return {
+        orderId: order.id,
+        amount: totalAmount,
+      };
     }),
 });

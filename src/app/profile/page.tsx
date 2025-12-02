@@ -149,6 +149,7 @@ export default function ProfilePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const editingTarget = useMemo(
     () => addresses.find((address) => address.id === editingId),
@@ -233,6 +234,7 @@ export default function ProfilePage() {
     setEditingId(address.id);
     setStatusMessage(null);
     setErrorMessage(null);
+    setIsFormOpen(true);
   };
 
   /* -----------------------------
@@ -452,6 +454,13 @@ export default function ProfilePage() {
               : "新しい住所を登録"}
           </h2>
           <p className="text-xs text-gray-500">郵便番号と市区町村は必須です。</p>
+          <button
+            type="button"
+            onClick={() => setIsFormOpen((prev) => !prev)}
+            className="mt-3 text-xs font-semibold text-yellow-700 underline underline-offset-4"
+          >
+            {isFormOpen ? "フォームを折りたたむ" : "フォームを開く"}
+          </button>
 
           {statusMessage && (
             <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -464,7 +473,8 @@ export default function ProfilePage() {
             </p>
           )}
 
-          <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+          {isFormOpen && (
+            <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
             {/* ラベルと受取人 */}
             <div className="grid gap-3 sm:grid-cols-2">
               <Input
@@ -583,6 +593,7 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+          )}
         </div>
       </section>
 
@@ -604,49 +615,81 @@ export default function ProfilePage() {
         ) : orders.length === 0 ? (
           <p className="mt-3 text-sm text-gray-500">まだ注文はありません。</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
-                  <th className="px-4 py-3">注文ID</th>
-                  <th className="px-4 py-3">注文日</th>
-                  <th className="px-4 py-3">合計金額</th>
-                  <th className="px-4 py-3">ステータス</th>
-                  <th className="px-4 py-3 text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-800">
-                      {order.id}
-                    </td>
-                    <td className="px-4 py-3 text-gray-800">
-                      {formatDate(order.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">
-                      {formatCurrency(order.totalAmount)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${statusStyle(order.status)}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="text-xs font-semibold text-yellow-700 underline underline-offset-4 hover:text-yellow-800"
-                      >
-                        注文詳細ページへ
-                      </Link>
-                    </td>
+          <>
+            <div className="mt-4 hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+                    <th className="px-4 py-3">注文ID</th>
+                    <th className="px-4 py-3">注文日</th>
+                    <th className="px-4 py-3">合計金額</th>
+                    <th className="px-4 py-3">ステータス</th>
+                    <th className="px-4 py-3 text-right">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {orders.map((order) => (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs text-gray-800">
+                        {order.id}
+                      </td>
+                      <td className="px-4 py-3 text-gray-800">
+                        {formatDate(order.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-gray-900">
+                        {formatCurrency(order.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${statusStyle(order.status)}`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="text-xs font-semibold text-yellow-700 underline underline-offset-4 hover:text-yellow-800"
+                        >
+                          注文詳細ページへ
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 space-y-4 md:hidden">
+              {orders.map((order) => (
+                <div key={order.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500">注文日</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatDate(order.createdAt)}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${statusStyle(order.status)}`}
+                    >
+                      {order.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1 text-sm text-gray-700">
+                    <p className="font-mono text-xs text-gray-500 break-all">ID: {order.id}</p>
+                    <p className="text-base font-semibold text-gray-900">
+                      {formatCurrency(order.totalAmount)}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black transition hover:bg-yellow-500"
+                  >
+                    注文詳細ページへ
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
     </div>
