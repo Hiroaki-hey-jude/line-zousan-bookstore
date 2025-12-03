@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -53,8 +54,11 @@ const useCartList = () => {
 };
 
 export default function CartPage() {
+  const router = useRouter();
   const { listQuery, updateQuantity, removeItem } = useCartList();
   const items = listQuery.data ?? [];
+  const profileQuery = trpc.user.profile.useQuery();
+  const profile = profileQuery.data;
   const addressesQuery = trpc.userAddress.list.useQuery();
   const addresses = useMemo(
     () => addressesQuery.data ?? [],
@@ -102,6 +106,17 @@ export default function CartPage() {
 
     if (addresses.length === 0) {
       setCheckoutError("プロフィールから配送先を登録してください。");
+      return;
+    }
+
+    if (profileQuery.isLoading) {
+      setCheckoutError("プロフィールを読み込み中です。少し待ってから再度お試しください。");
+      return;
+    }
+
+    if (!profile?.email) {
+      setCheckoutError("メール未登録です。メールアドレスを設定してください。");
+      router.push("/profile/email");
       return;
     }
 
@@ -153,6 +168,15 @@ export default function CartPage() {
       <div className="space-y-1">
         <h1 className="text-lg font-semibold text-black">カート</h1>
       </div>
+
+      {profile && !profile.email && (
+        <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          メール未登録です。購入にはメール設定が必要です.{" "}
+          <Link href="/profile/email" className="font-semibold underline">
+            メールを登録する
+          </Link>
+        </div>
+      )}
 
       {listQuery.isLoading && (
         <div className="rounded-lg bg-white p-4 text-sm text-gray-600 shadow-sm">読み込み中...</div>
@@ -322,19 +346,20 @@ export default function CartPage() {
 
               <button
                 type="button"
-                className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black disabled:bg-gray-400"
-                onClick={handleCheckoutClick}
-                disabled={
-                  isCheckoutProcessing ||
-                  addressesQuery.isLoading ||
-                  Boolean(addressesQuery.error) ||
-                  items.length === 0 ||
-                  addresses.length === 0
-                }
-              >
-                {isCheckoutProcessing ? "処理中..." : "購入手続きへ"}
-              </button>
-              {checkoutError && !isConfirmOpen && (
+              className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black disabled:bg-gray-400"
+              onClick={handleCheckoutClick}
+              disabled={
+                isCheckoutProcessing ||
+                addressesQuery.isLoading ||
+                Boolean(addressesQuery.error) ||
+                items.length === 0 ||
+                addresses.length === 0 ||
+                (Boolean(profileQuery.data) && !profile?.email)
+              }
+            >
+              {isCheckoutProcessing ? "処理中..." : "購入手続きへ"}
+            </button>
+            {checkoutError && !isConfirmOpen && (
                 <p className="mt-2 text-xs text-red-600" aria-live="polite">
                   {checkoutError}
                 </p>

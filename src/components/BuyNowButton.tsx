@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -41,7 +43,10 @@ export function BuyNowButton({
   className,
   children,
 }: BuyNowButtonProps) {
+  const router = useRouter();
   const addressesQuery = trpc.userAddress.list.useQuery();
+  const profileQuery = trpc.user.profile.useQuery();
+  const profile = profileQuery.data;
   const addresses = useMemo(
     () => addressesQuery.data ?? [],
     [addressesQuery.data],
@@ -74,6 +79,17 @@ export function BuyNowButton({
 
     if (addresses.length === 0) {
       setErrorMessage("プロフィールから配送先を登録してください。");
+      return;
+    }
+
+    if (profileQuery.isLoading) {
+      setErrorMessage("プロフィールを読み込み中です。少し待ってから再度お試しください。");
+      return;
+    }
+
+    if (!profile?.email) {
+      setErrorMessage("メール未登録です。メールアドレスを設定してください。");
+      router.push("/profile/email");
       return;
     }
 
@@ -122,7 +138,8 @@ export function BuyNowButton({
           disabled ||
           isProcessing ||
           addressesQuery.isLoading ||
-          Boolean(addressesQuery.error)
+          Boolean(addressesQuery.error) ||
+          (Boolean(profileQuery.data) && !profile?.email)
         }
         onClick={handleClick}
       >
@@ -131,6 +148,14 @@ export function BuyNowButton({
       {errorMessage && !isConfirmOpen && (
         <p className="text-xs text-red-600" aria-live="polite">
           {errorMessage}
+        </p>
+      )}
+      {profile && !profile.email && !isConfirmOpen && (
+        <p className="text-xs text-yellow-700">
+          メール未登録です。購入にはメール設定が必要です。
+          <Link href="/profile/email" className="font-semibold underline">
+            メールを登録する
+          </Link>
         </p>
       )}
       {!defaultAddress && !addressesQuery.isLoading && !errorMessage && (
