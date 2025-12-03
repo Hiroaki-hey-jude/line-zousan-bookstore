@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { publicProcedure, router } from "@/server/api/trpc";
+import { protectedProcedure, router } from "@/server/api/trpc";
 
 const shippingInput = z.object({
   shipName: z.string(),
@@ -16,7 +16,7 @@ const shippingInput = z.object({
 });
 
 export const orderRouter = router({
-  list: publicProcedure.query(({ ctx }) => {
+  list: protectedProcedure.query(({ ctx }) => {
     return prisma.order.findMany({
       where: { userId: ctx.userId },
       select: {
@@ -29,7 +29,7 @@ export const orderRouter = router({
     });
   }),
 
-  byId: publicProcedure
+  byId: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const order = await prisma.order.findFirst({
@@ -63,7 +63,7 @@ export const orderRouter = router({
       return order;
     }),
 
-  createOrder: publicProcedure
+  createOrder: protectedProcedure
     .input(
       z.union([
         z

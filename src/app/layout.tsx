@@ -1,29 +1,16 @@
-// // app/layout.tsx
-// import type { ReactNode } from "react";
-// import "./globals.css";
-// import { TRPCProvider } from "./trpc-provider";
-
-// export default function RootLayout({ children }: { children: ReactNode }) {
-//   return (
-//     <html lang="ja">
-//       <body>
-//         <TRPCProvider>{children}</TRPCProvider>
-//       </body>
-//     </html>
-//   );
-// }
-
+// app/layout.tsx
 import type { ReactNode } from "react";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
 import { Header } from "@/components/Header";
 import { TRPCProvider } from "./trpc-provider";
+// import LiffProvider from "../components/LiffProvider";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <head>
-        {/* ★ Material Icons 読み込み ここだけ追加 */}
+        {/* ★ Material Icons 読み込み */}
         <link
           href="https://fonts.googleapis.com/icon?family=Material+Icons"
           rel="stylesheet"
@@ -31,16 +18,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
 
       <body className="min-h-screen bg-gray-50">
-        <TRPCProvider>
-          {/* ヘッダー */}
-          <Header />
-
-          {/* コンテンツ（下ナビの分だけ下に余白） */}
-          <main className="pb-16">{children}</main>
-
-          {/* 下ナビ */}
-          <BottomNav />
-        </TRPCProvider>
+        {/* ★ すべての UI の外側に置く */}
+        {/* <LiffProvider> */}
+          <TRPCProvider>
+            <Header />
+            <main className="pb-16">{children}</main>
+            <BottomNav />
+          </TRPCProvider>
+        {/* </LiffProvider> */}
       </body>
     </html>
   );

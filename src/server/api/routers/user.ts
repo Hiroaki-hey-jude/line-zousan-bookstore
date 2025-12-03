@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 
 import { prisma } from "@/lib/prisma";
-import { publicProcedure, router } from "../trpc";
+import { protectedProcedure, router } from "../trpc";
 
 export const userRouter = router({
-  profile: publicProcedure.query(async ({ ctx }) => {
+  profile: protectedProcedure.query(async ({ ctx }) => {
     const user = await prisma.user.findUnique({
       where: { id: ctx.userId },
       select: {
