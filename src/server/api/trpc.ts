@@ -1,29 +1,36 @@
-// server/api/trpc.ts
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
-import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
-/**
- * コンテキスト（認証情報とかを入れたいときに使う）
- * 今は何もないので空オブジェクトを返す
- */
+type SessionTokenPayload = {
+  userId: string;
+  iat: number;
+  exp: number;
+};
+
+// ===== Context =====
 export async function createTRPCContext({ req }: { req: Request }) {
-  void req;
-  // デモユーザーを返す
-  const user = await prisma.user.upsert({
-    where: { lineId: "demo-line-user" },
-    update: {},
-    create: {
-      lineId: "demo-line-user",
-      name: "像倉 花子",
-      email: "demo@example.com",
-    },
-  });
+  const auth = req.headers.get("authorization");
+  if (!auth) return { userId: null };
 
-  return { userId: user.id };
+  const token = auth.replace("Bearer ", "").trim();
+
+  try {
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as SessionTokenPayload;
+
+    return { userId: payload.userId };
+  } catch {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Token expired" });
+  }
 }
 
-const t = initTRPC.context<typeof createTRPCContext>().create({
+// ⭕️ 正しい context 型の与え方
+type Context = Awaited<ReturnType<typeof createTRPCContext>>;
+
+const t = initTRPC.context<Context>().create({
   errorFormatter({ shape, error }) {
     return {
       ...shape,
@@ -36,6 +43,25 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
-export const router = t.router;
+// ===== 公開/保護プロシージャ =====
 export const publicProcedure = t.procedure;
-// 認証が必要なAPIを作るときはここで middleware を増やしていくイメージ
+
+const isAuthed = t.middleware(({ ctx, next }) => {
+  if (!ctx.userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "ログインしてください。",
+    });
+  }
+
+  return next({
+    ctx: {
+      userId: ctx.userId,
+    },
+  });
+});
+
+export const protectedProcedure = t.procedure.use(isAuthed);
+
+// router
+export const router = t.router;

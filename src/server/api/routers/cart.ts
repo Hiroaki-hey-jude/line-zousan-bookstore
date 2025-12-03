@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { publicProcedure, router } from "../trpc";
+import { protectedProcedure, router } from "../trpc";
 
 const cartItemInput = z.object({
   bookId: z.string(),
@@ -10,7 +10,7 @@ const cartItemInput = z.object({
 });
 
 export const cartRouter = router({
-  list: publicProcedure.query(({ ctx }) => {
+  list: protectedProcedure.query(({ ctx }) => {
     return prisma.cartItem.findMany({
       where: { userId: ctx.userId },
       include: {
@@ -20,7 +20,7 @@ export const cartRouter = router({
     });
   }),
 
-  add: publicProcedure
+  add: protectedProcedure
     .input(cartItemInput)
     .mutation(async ({ ctx, input }) => {
       const book = await prisma.book.findUnique({ where: { id: input.bookId } });
@@ -60,7 +60,7 @@ export const cartRouter = router({
       });
     }),
 
-  updateQuantity: publicProcedure
+  updateQuantity: protectedProcedure
     .input(
       z.object({
         bookId: z.string(),
@@ -94,7 +94,7 @@ export const cartRouter = router({
       });
     }),
 
-  remove: publicProcedure
+  remove: protectedProcedure
     .input(z.object({ bookId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await prisma.cartItem.findUnique({

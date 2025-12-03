@@ -1,7 +1,7 @@
 // server/api/routers/address.ts
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "../../../../generated/prisma/client";
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure } from "../trpc";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -75,7 +75,7 @@ const ensureDefaultExists = async (
 };
 
 export const userAddressRouter = router({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return prisma.userAddress.findMany({
       where: { userId: ctx.userId },
       orderBy: [
@@ -85,7 +85,7 @@ export const userAddressRouter = router({
     });
   }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(addressInputSchema)
     .mutation(async ({ ctx, input }) => {
       const payload = normalizeAddressPayload(input);
@@ -115,7 +115,7 @@ export const userAddressRouter = router({
       });
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(updateAddressSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -162,7 +162,7 @@ export const userAddressRouter = router({
       });
     }),
 
-  remove: publicProcedure
+  remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return prisma.$transaction(async (tx) => {
@@ -187,7 +187,7 @@ export const userAddressRouter = router({
       });
     }),
 
-  setDefault: publicProcedure
+  setDefault: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return prisma.$transaction(async (tx) => {

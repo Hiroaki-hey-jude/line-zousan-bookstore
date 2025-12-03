@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { router, publicProcedure } from "@/server/api/trpc";
+import { router, protectedProcedure } from "@/server/api/trpc";
 
 const resolveAppUrl = () =>
   process.env.NEXT_PUBLIC_DOMAIN ??
@@ -11,7 +11,7 @@ const resolveAppUrl = () =>
   "http://localhost:3000";
 
 export const checkoutRouter = router({
-  createSession: publicProcedure
+  createSession: protectedProcedure
     .input(
       z.object({
         orderId: z.string(),
