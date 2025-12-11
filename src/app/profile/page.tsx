@@ -425,11 +425,11 @@ export default function ProfilePage() {
                   {emailStatusMessage}
                 </p>
               )}
-              <div className="text-right text-[11px] text-gray-500">
+              {/* <div className="text-right text-[11px] text-gray-500">
                 <Link className="underline underline-offset-4" href="/profile/email">
                   別ページで編集する
                 </Link>
-              </div>
+              </div> */}
             </form>
           </div>
 
