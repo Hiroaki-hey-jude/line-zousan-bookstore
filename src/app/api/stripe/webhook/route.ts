@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const DEFAULT_SHIPMENT_CARRIER = "ヤマト";
 
 export async function POST(req: Request) {
   if (!webhookSecret) {
@@ -77,12 +78,42 @@ const markOrderStatus = async (
       ? session.payment_intent
       : session.payment_intent?.id ?? null;
 
-  await prisma.order.updateMany({
-    where: { id: orderId },
-    data: {
-      status,
-      paymentIntentId,
-      stripeSessionId: session.id,
-    },
+  await prisma.$transaction(async (tx) => {
+    const existingOrder = await tx.order.findUnique({
+      where: { id: orderId },
+      select: { id: true },
+    });
+
+    if (!existingOrder) {
+      return;
+    }
+
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status,
+        paymentIntentId,
+        stripeSessionId: session.id,
+      },
+    });
+
+    if (status !== "PAID") {
+      return;
+    }
+
+    const shipmentExists = await tx.shipment.findFirst({
+      where: { orderId },
+      select: { id: true },
+    });
+
+    if (!shipmentExists) {
+      await tx.shipment.create({
+        data: {
+          orderId,
+          carrier: DEFAULT_SHIPMENT_CARRIER,
+          status: "READY",
+        },
+      });
+    }
   });
 };
