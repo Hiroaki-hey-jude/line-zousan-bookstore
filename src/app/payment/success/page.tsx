@@ -17,7 +17,7 @@ export default function PaymentSuccessPage({ searchParams }: SuccessPageProps) {
           決済が完了しました
         </h1>
         <p className="mt-2 text-sm text-gray-600">
-          決済の完了通知を受け取り次第、注文ステータスを更新します。数秒待っても反映されない場合は、プロフィールの注文履歴からステータスを再確認してください。
+          決済の完了通知を受け取り次第、注文ステータスを更新します。プロフィールの注文履歴からステータスを確認してください。
         </p>
 
         {orderId && (

@@ -20,6 +20,25 @@ export const checkoutRouter = router({
     .mutation(async ({ ctx, input }) => {
       const stripe = getStripeClient();
 
+      const user = await prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { email: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "ユーザー情報を取得できません。",
+        });
+      }
+
+      if (!user.email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "購入前にメールアドレスを設定してください。",
+        });
+      }
+
       const order = await prisma.order.findFirst({
         where: { id: input.orderId, userId: ctx.userId },
         include: {
@@ -79,6 +98,7 @@ export const checkoutRouter = router({
         //   },
         // },
         line_items: lineItems,
+        customer_email: user.email,
         success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&orderId=${order.id}`,
         cancel_url: `${baseUrl}/payment/cancel?orderId=${order.id}`,
         client_reference_id: order.id,

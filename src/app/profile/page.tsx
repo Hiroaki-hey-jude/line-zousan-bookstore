@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/api/root";
 import { trpc } from "@/trpc/react";
@@ -131,6 +131,15 @@ export default function ProfilePage() {
   const utils = trpc.useUtils();
 
   const profileQuery = trpc.user.profile.useQuery();
+  const updateEmailMutation = trpc.user.updateEmail.useMutation({
+    onSuccess: async () => {
+      await utils.user.profile.invalidate();
+      setEmailStatusMessage("メールアドレスを更新しました。");
+    },
+    onError: (error) => {
+      setEmailErrorMessage(error.message ?? "メールアドレスの更新に失敗しました。");
+    },
+  });
   const addressesQuery = trpc.userAddress.list.useQuery();
   const ordersQuery = trpc.order.list.useQuery();
   const createMutation = trpc.userAddress.create.useMutation();
@@ -150,6 +159,19 @@ export default function ProfilePage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailErrorMessage, setEmailErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [emailStatusMessage, setEmailStatusMessage] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (profile?.email) {
+      setEmailInput(profile.email);
+    }
+  }, [profile?.email]);
 
   const editingTarget = useMemo(
     () => addresses.find((address) => address.id === editingId),
@@ -211,6 +233,31 @@ export default function ProfilePage() {
       resetForm();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "住所の保存に失敗しました。"));
+    }
+  };
+
+  const handleEmailSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    setEmailStatusMessage(null);
+    setEmailErrorMessage(null);
+
+    const trimmed = emailInput.trim();
+    if (!trimmed) {
+      setEmailErrorMessage("メールアドレスを入力してください。");
+      return;
+    }
+
+    try {
+      await updateEmailMutation.mutateAsync({ email: trimmed });
+      setEmailInput(trimmed);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "メールアドレスの更新に失敗しました。";
+      setEmailErrorMessage(message);
     }
   };
 
@@ -286,6 +333,7 @@ export default function ProfilePage() {
     setDefaultMutation.isPending;
 
   const avatarInitial = profile?.name?.charAt(0) ?? "L";
+  const isUpdatingEmail = updateEmailMutation.isPending;
 
   /* -----------------------------
     JSX
@@ -334,20 +382,72 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900">ヘルプとポリシー</h2>
-          <p className="mt-1 text-xs text-gray-600">
-            ご利用にあたっての重要なリンクをまとめています。
-          </p>
-          <div className="mt-3 space-y-2 text-sm font-semibold text-yellow-700">
-            <Link className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 hover:bg-yellow-100" href="/terms">
-              利用規約
-              <span aria-hidden>→</span>
-            </Link>
-            <Link className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 hover:bg-yellow-100" href="/privacy">
-              プライバシーポリシー
-              <span aria-hidden>→</span>
-            </Link>
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900">メール設定</h2>
+            <p className="mt-1 text-xs text-gray-600">
+              購入手続きにはメールアドレスが必要です。ここから変更・登録できます。
+            </p>
+            {!profile?.email && (
+              <div className="mt-2 rounded-md bg-yellow-50 px-3 py-2 text-xs font-semibold text-yellow-800">
+                メール未登録です。購入前に設定してください。
+              </div>
+            )}
+
+            <form className="mt-3 space-y-3" onSubmit={handleEmailSubmit}>
+              <label className="text-xs font-semibold text-gray-800" htmlFor="profile-email">
+                メールアドレス
+              </label>
+              <input
+                id="profile-email"
+                name="profile-email"
+                type="email"
+                value={emailInput}
+                onChange={(event) => setEmailInput(event.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                placeholder="example@example.com"
+                required
+              />
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-500"
+                disabled={isUpdatingEmail}
+              >
+                {isUpdatingEmail ? "保存中..." : "メールアドレスを保存"}
+              </button>
+              {emailErrorMessage && (
+                <p className="text-xs text-red-600" aria-live="polite">
+                  {emailErrorMessage}
+                </p>
+              )}
+              {emailStatusMessage && (
+                <p className="text-xs text-green-700" aria-live="polite">
+                  {emailStatusMessage}
+                </p>
+              )}
+              {/* <div className="text-right text-[11px] text-gray-500">
+                <Link className="underline underline-offset-4" href="/profile/email">
+                  別ページで編集する
+                </Link>
+              </div> */}
+            </form>
+          </div>
+
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900">ヘルプとポリシー</h2>
+            <p className="mt-1 text-xs text-gray-600">
+              ご利用にあたっての重要なリンクをまとめています。
+            </p>
+            <div className="mt-3 space-y-2 text-sm font-semibold text-yellow-700">
+              <Link className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 hover:bg-yellow-100" href="/terms">
+                利用規約
+                <span aria-hidden>→</span>
+              </Link>
+              <Link className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 hover:bg-yellow-100" href="/privacy">
+                プライバシーポリシー
+                <span aria-hidden>→</span>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
