@@ -11,7 +11,10 @@ type SessionTokenPayload = {
 // ===== Context =====
 export async function createTRPCContext({ req }: { req: Request }) {
   const auth = req.headers.get("authorization");
-  if (!auth) return { userId: null };
+  const adminToken = req.headers.get("x-admin-token");
+  const expectedAdminToken = process.env.ADMIN_ACCESS_TOKEN ?? "letmein";
+
+  if (!auth) return { userId: null, isAdmin: adminToken === expectedAdminToken };
 
   const token = auth.replace("Bearer ", "").trim();
 
@@ -21,7 +24,10 @@ export async function createTRPCContext({ req }: { req: Request }) {
       process.env.JWT_SECRET!
     ) as SessionTokenPayload;
 
-    return { userId: payload.userId };
+    return {
+      userId: payload.userId,
+      isAdmin: adminToken === expectedAdminToken,
+    };
   } catch {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Token expired" });
   }
@@ -62,6 +68,31 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 });
 
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+const isAdmin = t.middleware(({ ctx, next }) => {
+  if (!ctx.userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "ログインしてください。",
+    });
+  }
+
+  if (!ctx.isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "管理者権限が必要です。",
+    });
+  }
+
+  return next({
+    ctx: {
+      userId: ctx.userId,
+      isAdmin: true,
+    },
+  });
+});
+
+export const adminProcedure = t.procedure.use(isAdmin);
 
 // router
 export const router = t.router;
