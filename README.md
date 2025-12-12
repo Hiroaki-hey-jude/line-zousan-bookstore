@@ -22,7 +22,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 The project ships with a lightweight admin area for internal shipment management.
 
-- Set an admin token with the `ADMIN_ACCESS_TOKEN` environment variable (defaults to `letmein` for local use). Set a long, random `ADMIN_SESSION_PASSWORD` (32+ characters) to encrypt and sign the admin session cookie.
-- Start the dev server and open `/admin/login`, then enter the same token. A short-lived, httpOnly, encrypted admin session cookie is issued without storing the raw token.
+- Set an admin token with the `ADMIN_ACCESS_TOKEN` environment variable (defaults to `letmein` for local use). Set a long, random `ADMIN_SESSION_PASSWORD` (32+ characters) to encrypt and sign the admin session cookie via **iron-session**.
+- Start the dev server and open `/admin/login`, then enter the same token. A short-lived, httpOnly, encrypted admin session cookie (iron-session) is issued without storing the raw token.
 - Sign in to the store as a normal user so that API requests include your session token.
 - Access `/admin/shipments` to view recent orders, edit Stripe-webhook-created shipments, or add additional shipments. You can update carrier, tracking number, status, and shipped/delivered timestamps from the forms on each order card.
