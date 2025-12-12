@@ -22,6 +22,7 @@ erDiagram
     uuid id PK
     uuid userId FK
     varchar label
+    varchar recipientName
     varchar postalCode
     varchar prefecture
     varchar city
@@ -29,12 +30,13 @@ erDiagram
     varchar chome
     varchar houseNumber
     varchar building
+    varchar phone
     boolean isDefault
     timestamp createdAt
     timestamp updatedAt
   }
   TAX_RATE {
-    uuid id PK
+    int id PK
     varchar name
     numeric rate
     timestamp validFrom
@@ -57,7 +59,7 @@ erDiagram
   ORDER {
     uuid id PK
     uuid userId FK
-    varchar status
+    enum status "PENDING | PAID | CANCELED"
     int subtotalExTax
     int taxTotal
     int shippingFeeExTax
@@ -92,7 +94,7 @@ erDiagram
     uuid orderId FK
     varchar carrier
     varchar trackingNumber
-    varchar status
+    enum status "READY | SHIPPED | DELIVERED | CANCELED"
     timestamp shippedAt
     timestamp deliveredAt
     varchar externalRawStatus
