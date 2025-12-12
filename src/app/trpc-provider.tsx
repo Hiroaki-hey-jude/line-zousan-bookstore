@@ -5,7 +5,6 @@ import liff from "@line/liff";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { trpc } from "@/trpc/react";
-import { ADMIN_COOKIE_NAME } from "@/lib/admin";
 
 type SessionTokenPayload = { exp?: number };
 const decodeExpiry = (token: string | null) => {
@@ -17,16 +16,6 @@ const decodeExpiry = (token: string | null) => {
   } catch {
     return null;
   }
-};
-
-const getAdminToken = () => {
-  if (typeof document === "undefined") return null;
-
-  const match = document.cookie.match(
-    new RegExp(`${ADMIN_COOKIE_NAME}=([^;]+)`)
-  );
-
-  return match ? decodeURIComponent(match[1]) : null;
 };
 
 export function TRPCProvider({ children }: { children: ReactNode }) {
@@ -56,11 +45,6 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
 
               if (sessionToken) {
                 headers.Authorization = `Bearer ${sessionToken}`;
-              }
-
-              const adminToken = getAdminToken();
-              if (adminToken) {
-                headers["x-admin-token"] = adminToken;
               }
 
               return headers;

@@ -38,6 +38,8 @@ export default function AdminLoginPage() {
           <p className="mt-1 text-sm text-gray-600">
             管理用アクセストークンを入力してください。環境変数 ADMIN_ACCESS_TOKEN を
             設定している場合は同じ値を使います。指定がない場合は「letmein」がデフォルトです。
+            ログイン後はトークンそのものではなく、httpOnly + 署名付きの管理セッション
+            Cookie が暗号化されて保存されます。
           </p>
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">

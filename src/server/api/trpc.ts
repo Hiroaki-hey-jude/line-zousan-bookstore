@@ -2,6 +2,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import jwt from "jsonwebtoken";
 
+import { readAdminSession } from "@/lib/admin";
+
 type SessionTokenPayload = {
   userId: string;
   iat: number;
@@ -11,10 +13,9 @@ type SessionTokenPayload = {
 // ===== Context =====
 export async function createTRPCContext({ req }: { req: Request }) {
   const auth = req.headers.get("authorization");
-  const adminToken = req.headers.get("x-admin-token");
-  const expectedAdminToken = process.env.ADMIN_ACCESS_TOKEN ?? "letmein";
+  const adminSession = await readAdminSession(req);
 
-  if (!auth) return { userId: null, isAdmin: adminToken === expectedAdminToken };
+  if (!auth) return { userId: null, isAdmin: Boolean(adminSession) };
 
   const token = auth.replace("Bearer ", "").trim();
 
@@ -26,7 +27,7 @@ export async function createTRPCContext({ req }: { req: Request }) {
 
     return {
       userId: payload.userId,
-      isAdmin: adminToken === expectedAdminToken,
+      isAdmin: Boolean(adminSession),
     };
   } catch {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Token expired" });
