@@ -24,6 +24,15 @@ const statusOptions: ShipmentStatus[] = [
   "CANCELED",
 ];
 
+type StatusFilter = "ALL" | "READY" | "SHIPPED" | "DELIVERED";
+
+const statusFilterOptions: { label: string; value: StatusFilter }[] = [
+  { label: "すべて", value: "ALL" },
+  { label: "Ready", value: "READY" },
+  { label: "Shipped", value: "SHIPPED" },
+  { label: "Delivered", value: "DELIVERED" },
+];
+
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -74,6 +83,19 @@ type OrderWithShipments = RouterOutputs["shipment"]["listRecent"][number];
 export default function AdminShipmentsPage() {
   const utils = trpc.useUtils();
   const recentOrders = trpc.shipment.listRecent.useQuery({ limit: 20 });
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+
+  const filteredOrders = useMemo(() => {
+    if (!recentOrders.data) return [];
+    if (statusFilter === "ALL") return recentOrders.data;
+
+    return recentOrders.data
+      .map((order) => ({
+        ...order,
+        shipments: order.shipments.filter((shipment) => shipment.status === statusFilter),
+      }))
+      .filter((order) => order.shipments.length > 0);
+  }, [recentOrders.data, statusFilter]);
 
   return (
     <div className="space-y-4">
@@ -82,6 +104,26 @@ export default function AdminShipmentsPage() {
         <p className="text-sm text-gray-600">
           Stripe Webhook で自動作成された配送情報を含め、注文ごとに配送会社・追跡番号・ステータスを更新できます。
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-sm">
+        {statusFilterOptions.map((option) => {
+          const isActive = statusFilter === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setStatusFilter(option.value)}
+              className={`rounded-full border px-3 py-1 font-semibold transition ${
+                isActive
+                  ? "border-amber-600 bg-amber-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-amber-300"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
 
       {recentOrders.isLoading && (
@@ -94,7 +136,12 @@ export default function AdminShipmentsPage() {
       )}
 
       <div className="space-y-4">
-        {recentOrders.data?.map((order) => (
+        {filteredOrders.length === 0 && !recentOrders.isLoading && (
+          <p className="rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-600">
+            選択したステータスの配送は見つかりませんでした。
+          </p>
+        )}
+        {filteredOrders.map((order) => (
           <OrderCard
             key={order.id}
             order={order}
@@ -291,10 +338,10 @@ function ShipmentEditor({
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <button
           type="submit"
-          disabled={updateShipment.isLoading}
+          disabled={updateShipment.isPending}
           className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
         >
-          {updateShipment.isLoading ? "保存中…" : "保存"}
+          {updateShipment.isPending ? "保存中…" : "保存"}
         </button>
         {message && <span className="text-green-600">{message}</span>}
         {error && <span className="text-red-600">{error}</span>}
@@ -433,10 +480,10 @@ function NewShipmentForm({
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <button
           type="submit"
-          disabled={createShipment.isLoading}
+          disabled={createShipment.isPending}
           className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
         >
-          {createShipment.isLoading ? "作成中…" : "配送を追加"}
+          {createShipment.isPending ? "作成中…" : "配送を追加"}
         </button>
         {message && <span className="text-green-700">{message}</span>}
         {error && <span className="text-red-700">{error}</span>}

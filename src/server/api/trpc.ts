@@ -13,7 +13,7 @@ type SessionTokenPayload = {
 // ===== Context =====
 export async function createTRPCContext({ req }: { req: Request }) {
   const auth = req.headers.get("authorization");
-  const adminSession = await readAdminSession(req);
+  const adminSession = await readAdminSession();
 
   if (!auth) return { userId: null, isAdmin: Boolean(adminSession) };
 
@@ -71,16 +71,9 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(isAuthed);
 
 const isAdmin = t.middleware(({ ctx, next }) => {
-  if (!ctx.userId) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "ログインしてください。",
-    });
-  }
-
   if (!ctx.isAdmin) {
     throw new TRPCError({
-      code: "FORBIDDEN",
+      code: ctx.userId ? "FORBIDDEN" : "UNAUTHORIZED",
       message: "管理者権限が必要です。",
     });
   }
