@@ -1,6 +1,10 @@
 "use server";
 
-import { getExpectedAdminToken, persistAdminSession, clearAdminSessionCookie } from "@/lib/admin";
+import {
+  getExpectedAdminToken,
+  persistAdminSession,
+  clearAdminSessionCookie,
+} from "@/lib/admin";
 
 export async function setAdminSession(token: string) {
   const expected = getExpectedAdminToken();
@@ -14,5 +18,5 @@ export async function setAdminSession(token: string) {
 }
 
 export async function clearAdminSession() {
-  clearAdminSessionCookie();
+  await clearAdminSessionCookie();
 }

@@ -1,31 +1,22 @@
 import { cookies as nextCookies } from "next/headers";
-import type { NextRequest } from "next/server";
 import {
   getIronSession,
   type IronSession,
-  type IronSessionOptions,
+  type SessionOptions,
 } from "iron-session";
-import { getIronSession as getEdgeIronSession } from "iron-session/edge";
 
 export const ADMIN_COOKIE_NAME = "admin-session";
 
-const ADMIN_TOKEN_FALLBACK = "letmein";
-const SESSION_DURATION_SECONDS = 60 * 60 * 8; // 8 hours
+const SESSION_DURATION_SECONDS = 60 * 60 * 8;
 const SESSION_DURATION_MS = SESSION_DURATION_SECONDS * 1000;
+const ADMIN_TOKEN_FALLBACK = "letmein";
 
-const sessionPassword =
-  process.env.ADMIN_SESSION_PASSWORD ??
-  "dev-change-me-admin-session-password-32-chars";
+if (!process.env.ADMIN_SESSION_PASSWORD) {
+  throw new Error("ADMIN_SESSION_PASSWORD is required");
+}
 
-export type AdminSessionPayload = {
-  isAdmin: true;
-  createdAt: number;
-};
-
-type AdminSession = Partial<AdminSessionPayload>;
-
-const sessionOptions: IronSessionOptions = {
-  password: sessionPassword,
+const sessionOptions: SessionOptions = {
+  password: process.env.ADMIN_SESSION_PASSWORD,
   cookieName: ADMIN_COOKIE_NAME,
   cookieOptions: {
     httpOnly: true,
@@ -36,13 +27,17 @@ const sessionOptions: IronSessionOptions = {
   },
 };
 
+type AdminSession = {
+  isAdmin?: true;
+  createdAt?: number;
+};
+
 const destroyExpiredSession = async (
   session: IronSession<AdminSession>
-): Promise<AdminSessionPayload | null> => {
+) => {
   if (!session.isAdmin || !session.createdAt) return null;
 
-  const isExpired = Date.now() - session.createdAt > SESSION_DURATION_MS;
-  if (isExpired) {
+  if (Date.now() - session.createdAt > SESSION_DURATION_MS) {
     await session.destroy();
     return null;
   }
@@ -50,19 +45,13 @@ const destroyExpiredSession = async (
   return { isAdmin: true, createdAt: session.createdAt };
 };
 
-const getSessionFromCookies = () =>
-  getIronSession<AdminSession>(nextCookies(), sessionOptions);
+const getSessionFromCookies = async () => {
+  const cookieStore = await nextCookies();
+  return getIronSession<AdminSession>(cookieStore, sessionOptions);
+};
 
-const getSessionFromRequest = (request: NextRequest | Request) =>
-  getEdgeIronSession<AdminSession>(request, sessionOptions);
-
-export const readAdminSession = async (
-  request?: NextRequest | Request
-): Promise<AdminSessionPayload | null> => {
-  const session = request
-    ? await getSessionFromRequest(request)
-    : await getSessionFromCookies();
-
+export const readAdminSession = async () => {
+  const session = await getSessionFromCookies();
   return destroyExpiredSession(session);
 };
 
@@ -78,5 +67,12 @@ export const clearAdminSessionCookie = async () => {
   await session.destroy();
 };
 
-export const getExpectedAdminToken = () =>
-  process.env.ADMIN_ACCESS_TOKEN ?? ADMIN_TOKEN_FALLBACK;
+export const getExpectedAdminToken = () => {
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.ADMIN_ACCESS_TOKEN) {
+      throw new Error("ADMIN_ACCESS_TOKEN is required in production");
+    }
+  }
+
+  return process.env.ADMIN_ACCESS_TOKEN ?? ADMIN_TOKEN_FALLBACK;
+};
