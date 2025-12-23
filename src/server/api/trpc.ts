@@ -2,6 +2,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import jwt from "jsonwebtoken";
 
+import { readAdminSession } from "@/lib/admin";
+
 type SessionTokenPayload = {
   userId: string;
   iat: number;
@@ -11,7 +13,9 @@ type SessionTokenPayload = {
 // ===== Context =====
 export async function createTRPCContext({ req }: { req: Request }) {
   const auth = req.headers.get("authorization");
-  if (!auth) return { userId: null };
+  const adminSession = await readAdminSession();
+
+  if (!auth) return { userId: null, isAdmin: Boolean(adminSession) };
 
   const token = auth.replace("Bearer ", "").trim();
 
@@ -21,7 +25,10 @@ export async function createTRPCContext({ req }: { req: Request }) {
       process.env.JWT_SECRET!
     ) as SessionTokenPayload;
 
-    return { userId: payload.userId };
+    return {
+      userId: payload.userId,
+      isAdmin: Boolean(adminSession),
+    };
   } catch {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Token expired" });
   }
@@ -62,6 +69,24 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 });
 
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+const isAdmin = t.middleware(({ ctx, next }) => {
+  if (!ctx.isAdmin) {
+    throw new TRPCError({
+      code: ctx.userId ? "FORBIDDEN" : "UNAUTHORIZED",
+      message: "管理者権限が必要です。",
+    });
+  }
+
+  return next({
+    ctx: {
+      userId: ctx.userId,
+      isAdmin: true,
+    },
+  });
+});
+
+export const adminProcedure = t.procedure.use(isAdmin);
 
 // router
 export const router = t.router;

@@ -1,13 +1,48 @@
 "use client";
 
-import { ReactNode, useState, useEffect, useMemo } from "react";
+import { ReactNode, useState, useEffect, useMemo, useCallback } from "react";
 import liff from "@line/liff";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { trpc } from "@/trpc/react";
 
-type SessionTokenPayload = { exp?: number };
+type TRPCClient = ReturnType<typeof trpc.createClient>;
 
+const createTrpcClient = (sessionToken: string | null): TRPCClient =>
+  trpc.createClient({
+    links: [
+      httpBatchLink({
+        url: `${process.env.NEXT_PUBLIC_API_URL}/api/trpc`,
+        headers() {
+          const headers: Record<string, string> = {};
+
+          if (sessionToken) {
+            headers.Authorization = `Bearer ${sessionToken}`;
+          }
+
+          return headers;
+        },
+      }),
+    ],
+  });
+
+function BaseTRPCProvider({
+  children,
+  client,
+}: {
+  children: ReactNode;
+  client: TRPCClient;
+}) {
+  const [queryClient] = useState(() => new QueryClient());
+
+  return (
+    <trpc.Provider client={client} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
+  );
+}
+
+type SessionTokenPayload = { exp?: number };
 const decodeExpiry = (token: string | null) => {
   if (!token) return null;
   try {
@@ -20,7 +55,6 @@ const decodeExpiry = (token: string | null) => {
 };
 
 export function TRPCProvider({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const stored = localStorage.getItem("sessionToken");
@@ -32,30 +66,12 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
     return stored;
   });
 
-  // -------------------------------
-  // TRPC クライアント
-  // -------------------------------
-  const trpcClient = useMemo(
-    () =>
-      trpc.createClient({
-        links: [
-          httpBatchLink({
-            url: `${process.env.NEXT_PUBLIC_API_URL}/api/trpc`,
-            headers() {
-              return sessionToken
-                ? { Authorization: `Bearer ${sessionToken}` }
-                : {};
-            },
-          }),
-        ],
-      }),
-    [sessionToken]
-  );
+  const trpcClient = useMemo(() => createTrpcClient(sessionToken), [sessionToken]);
 
   // -------------------------------
   // ★ ID Token を verify して期限切れなら login()
   // -------------------------------
-  const refreshIdToken = async (): Promise<string | null> => {
+  const refreshIdToken = useCallback(async (): Promise<string | null> => {
     await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
 
     if (!liff.isLoggedIn()) {
@@ -87,14 +103,13 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
       // liff.login(); // 再ログインで新しい ID Token が得られる
       return null;
     }
-
     return idToken;
-  };
+  }, []);
 
   // -------------------------------
   // ★ 初回セッション更新
   // -------------------------------
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     const idToken = await refreshIdToken();
     if (!idToken) return;
 
@@ -102,20 +117,20 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
 
     localStorage.setItem("sessionToken", data.sessionToken);
     setSessionToken(data.sessionToken);
-  };
+  }, [refreshIdToken, trpcClient]);
 
   // -------------------------------
   // 初回実行
   // -------------------------------
   useEffect(() => {
-  if (sessionToken) return;
+    if (sessionToken) return;
 
-  const id = setTimeout(() => {
-    refreshSession();
-  }, 0);
+    const id = setTimeout(() => {
+      refreshSession();
+    }, 0);
 
-  return () => clearTimeout(id);
-}, [sessionToken]);
+    return () => clearTimeout(id);
+  }, [refreshSession, sessionToken]);
 
   // -------------------------------
   // sessionToken 自動リフレッシュ
@@ -136,13 +151,12 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [sessionToken]);
+  }, [refreshSession, sessionToken]);
 
-  return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </trpc.Provider>
-  );
+  return <BaseTRPCProvider client={trpcClient}>{children}</BaseTRPCProvider>;
+}
+
+export function AdminTRPCProvider({ children }: { children: ReactNode }) {
+  const trpcClient = useMemo(() => createTrpcClient(null), []);
+  return <BaseTRPCProvider client={trpcClient}>{children}</BaseTRPCProvider>;
 }
